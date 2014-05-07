@@ -55,7 +55,10 @@ namespace sketchpad {
   void insert_case4_diff_side(std::shared_ptr<Node<T>> node);      
   void insert_case5_same_side(std::shared_ptr<Node<T>> node);
 
-  void delete_node_with_one_child(std::shared_ptr<Node<T>> node);
+    void delete_node_with_one_child(std::shared_ptr<Node<T>> node);
+    void delete_red_sibling(std::shared_ptr<Node<T>> parent, bool bleft);
+    void delete_black_sibling(std::shared_ptr<Node<T>> parent, bool bleft, std::shared_ptr<Node<T>> sibiling);
+    void replace_node_with_child(std::shared_ptr<Node<T>> node, std::shared_ptr<Node<T>> child);
     
     
         
@@ -366,8 +369,110 @@ namespace sketchpad {
     }
   }
 
-    
-    
+  template<typename T>
+  void Node<T>::delete_node_with_one_child(std::shared_ptr<Node<T>> node) {
+    assert( node->left != nullptr && node->right != nullptr);
+
+    std::shared_ptr<Node<T>> child = node->left == nullptr? node->right:node->left;
+
+    bool bleft = is_left_child(node);
+    replace_node_with_child(node, child);
+
+    // TODO: handle the case the only root node is removed
+
+    if (node->color == Color::Black) {
+      if ( child != nullptr && child.color == Color::Red ) {
+	child.color = Color::Black;
+      } else {
+	delete_red_sibling(node->parent, bleft);
+      }
+    }
+
+    node = nullptr;
+  }
+      
+
+  template<typename T>
+  void Node<T>::delete_red_sibling(std::shared_ptr<Node<T>> parent, bool bleft) {
+    auto sibling = bleft? parent->right: parent->left;
+    assert(sibling != nullptr);
+
+    if ( sibling->color == Color::Red ) {
+      parent->color = Color::Red;
+
+      sibling.color = Color::Black;
+      if ( bleft ) {
+	left_rotate(parent);
+      }else {
+	right_rotate(parent);
+      }
+    } else {
+      delete_black_sibling(parent, bleft, sibling);
+    }
+
+  }
+
+
+    template<typename T>
+    void Node<T>::delete_black_sibling(std::shared_ptr<Node<T>> parent,
+				       bool bleft,
+				       std::shared_ptr<Node<T>> sibling) {
+
+      if ( bleft && sibling->left != nullptr
+	   && sibling->left->color == Color::Red ) {
+	sibling->color = Color::Red;
+	sibling->left->color = Color::Black;
+	right_rotate(sibling);
+	sibling = bleft ? parent->right:parent->left;
+      } else if ( !bleft && sibling->right != nullptr
+		  && sibling->right->color == Color::Red) {
+	sibling->color = Color::Red;
+	sibling->right->color = Color::Red;
+	left_rotate(sibling);
+	sibling = bleft? parent->right: parent->left;
+      }
+
+      if ( bleft && sibling->right != nullptr
+	   && sibling->right->color == Color::Red) {
+	sibling->right->color = Color::Black;
+	left_rotate(parent);
+      }
+
+      if ( !bleft && sibling->left != nullptr
+	   && sibling->left->color == Color::Red ) {
+	sibling->left->color = Color::Black;
+	right_rotate(parent);
+      }
+    }
+
+
+
+    template<typename T>
+    void Node<T>::replace_node_with_child(std::shared_ptr<Node<T>> node, std::shared_ptr<Node<T>> child) {
+      if ( child == nullptr ) {
+	if ( node->parent == nullptr ) {
+	  //TODO: need to access the root of the tree
+	} else {
+	  if ( is_left_child(node) ) {
+	    node->parent->left = nullptr;
+	  } else {
+	    node->parent->right = nullptr;
+	  }
+	}
+      } else {
+	if ( node->parent == nullptr ) {
+	  child->parent = nullptr;
+	  //TODO: need to access the root of the tree
+	} else {
+	  if ( is_left_child(node) ) {
+	    node->parent->left = child;
+	  }else {
+	    node->parent->right = child;
+	  }
+	  child->parent = node->parent;
+	}
+      }
+    }
 
 }
 
